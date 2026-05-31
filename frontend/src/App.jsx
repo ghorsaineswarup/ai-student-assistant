@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000"
-
 function FlashcardView({ raw }) {
   const cards = raw.split("---").map(c => c.trim()).filter(Boolean).map(card => {
     const frontMatch = card.match(/Front:\s*(.+)/i)
