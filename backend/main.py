@@ -2,9 +2,11 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
-from pdf_extractor import extract_text_from_pdf
 from dotenv import load_dotenv
-import os
+import os, sys, tempfile
+
+sys.path.append(os.path.dirname(__file__))
+from pdf_extractor import extract_text_from_pdf
 
 load_dotenv()
 
@@ -35,13 +37,53 @@ class ActionRequest(BaseModel):
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     contents = await file.read()
-    if file.filename.endswith(".pdf"):
-        text = extract_text_from_pdf(contents)
-    else:
-        text = contents.decode("utf-8")
+    filename = file.filename.lower()
+
+    try:
+        if filename.endswith(".pdf"):
+            text = extract_text_from_pdf(contents)
+
+        elif filename.endswith(".docx"):
+            import docx2txt
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as f:
+                f.write(contents)
+                tmp = f.name
+            text = docx2txt.process(tmp)
+            os.unlink(tmp)
+
+        elif filename.endswith(".pptx"):
+            from pptx import Presentation
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as f:
+                f.write(contents)
+                tmp = f.name
+            prs = Presentation(tmp)
+            text = "\n".join([
+                shape.text
+                for slide in prs.slides
+                for shape in slide.shapes
+                if hasattr(shape, "text")
+            ])
+            os.unlink(tmp)
+
+        elif filename.endswith(".csv"):
+            text = contents.decode("utf-8")
+
+        elif filename.endswith((".png", ".jpg", ".jpeg")):
+            text = f"[Image uploaded: {file.filename}] The student uploaded an image for study purposes."
+
+        else:
+            text = contents.decode("utf-8")
+
+    except Exception as e:
+        text = contents.decode("utf-8", errors="ignore")
+
     session_id = file.filename.replace(" ", "_")
     stored_text[session_id] = text
-    return {"session_id": session_id, "message": "File uploaded successfully", "preview": text[:300]}
+    return {
+        "session_id": session_id,
+        "message": "File uploaded successfully",
+        "preview": text[:300]
+    }
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
