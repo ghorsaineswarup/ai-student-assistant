@@ -1,8 +1,5 @@
-cd backend
-cat > requirements.txt << 'EOF'
 fastapi
 uvicorn
-groq
 openai
 python-multipart
 pymupdf
@@ -14,4 +11,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 sqlalchemy
 pydantic
-EOF
+requests
