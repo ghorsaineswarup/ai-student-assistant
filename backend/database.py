@@ -6,45 +6,44 @@ import datetime
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./student_assistant.db")
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True)
-    username = Column(String, unique=True, index=True)
+    id            = Column(Integer, primary_key=True, index=True)
+    email         = Column(String, unique=True, index=True)
+    username      = Column(String, unique=True, index=True)
     password_hash = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    
-    chat_history = relationship("ChatHistory", back_populates="user", cascade="all, delete")
+    created_at    = Column(DateTime, default=datetime.datetime.utcnow)
+    chat_history  = relationship("ChatHistory",  back_populates="user", cascade="all, delete")
     saved_content = relationship("SavedContent", back_populates="user", cascade="all, delete")
 
 class ChatHistory(Base):
     __tablename__ = "chat_history"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"))
     session_id = Column(String)
-    title = Column(String, default="Untitled Chat")
-    messages = Column(Text)
+    title      = Column(String, default="Untitled Chat")
+    messages   = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    
-    user = relationship("User", back_populates="chat_history")
+    user       = relationship("User", back_populates="chat_history")
 
 class SavedContent(Base):
     __tablename__ = "saved_content"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    type = Column(String)  # quiz, flashcard, summary, study_plan, etc.
-    title = Column(String)
-    content = Column(Text)
+    id         = Column(Integer, primary_key=True, index=True)
+    user_id    = Column(Integer, ForeignKey("users.id"))
+    type       = Column(String)
+    title      = Column(String)
+    content    = Column(Text)
     session_id = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    
-    user = relationship("User", back_populates="saved_content")
+    user       = relationship("User", back_populates="saved_content")
 
-# Create tables
 Base.metadata.create_all(bind=engine)
 
 def get_db():
