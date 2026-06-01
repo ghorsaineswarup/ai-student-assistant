@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
-import os, tempfile, logging, time, re
+import os, tempfile, logging, time
 
 from pdf_extractor import extract_text_from_pdf
 
@@ -39,9 +39,18 @@ Tagalog, Cebuano, Visayan, Malay, Indonesian, Vietnamese, Thai, Swahili.
 Rules:
 - Detect the language of the user's message automatically
 - Respond in that exact same language always
+- If the user writes in Nepali → respond in Nepali
+- If the user writes in Tagalog → respond in Tagalog
+- If the user writes in Cebuano → respond in Cebuano
+- If the user writes in Visayan → respond in Visayan
+- If the user writes in Hindi → respond in Hindi
 - If notes are in a different language than the question, still answer in the question's language
+- For quiz and flashcards, use the same language as the notes
 - Never mix languages in one response
+- IMPORTANT: If the user does not specify a language, DEFAULT to English
+- If notes are in English and user asks in English, respond in English
 """
+
 class ChatRequest(BaseModel):
     session_id: str
     question: str
@@ -160,7 +169,7 @@ You are a helpful study assistant. Answer questions based on these notes:
 
 {notes}
 
-Important: Detect the language of the user's question and respond in that exact same language."""},
+Important: Detect the language of the user's question and respond in that exact same language. Default to English if unclear."""},
                 {"role": "user", "content": req.question}
             ],
             timeout=30, max_tokens=2000
@@ -183,7 +192,7 @@ async def summarize(req: ActionRequest):
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are a study assistant. Summarize the following notes clearly with key points and main ideas.
 
-Important: Detect the language of the notes and summarize in that same language. If notes are in English, summarize in English. If in Nepali, summarize in Nepali. If mixed, use English."""},
+Important: Detect the language of the notes and summarize in that same language. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=30, max_tokens=2000
@@ -215,7 +224,7 @@ Answer: X
 
 Separate each question with a blank line.
 
-Important: Generate the quiz in the same language as the notes."""},
+Important: Generate the quiz in the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -242,7 +251,7 @@ Front: question
 Back: answer
 ---
 
-Important: Create flashcards in the same language as the notes."""},
+Important: Create flashcards in the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -252,7 +261,7 @@ Important: Create flashcards in the same language as the notes."""},
         logger.error(f"Flashcards error: {e}")
         return {"flashcards": f"Error: {str(e)}. Please try again."}
 
-# ========== 🧠 NEW AI FEATURES ==========
+# ========== NEW AI FEATURES ==========
 
 @app.post("/exam_predictor")
 async def exam_predictor(req: ActionRequest):
@@ -273,7 +282,7 @@ Likelihood: High/Medium/Low
 Reason: [why this will likely be on the exam]
 Answer: [model answer]
 
-Use the same language as the notes."""},
+Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -301,7 +310,7 @@ Create a 7-day study plan based on these notes. Each day should have:
 - Goals: [what to master by end of day]
 
 Make it realistic, actionable, and spaced for memory retention.
-Use the same language as the notes."""},
+Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -328,7 +337,7 @@ Definition: [clear definition]
 Example: [usage example if applicable]
 Importance: [why this matters]
 
-Use the same language as the notes."""},
+Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -358,7 +367,7 @@ Format as a hierarchical tree using indentation and symbols:
 │  ├─ 🍃 Leaf: [detail]
 │  └─ 🍃 Leaf: [detail]
 
-Make it comprehensive and well-organized. Use the same language as the notes."""},
+Make it comprehensive and well-organized. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -386,7 +395,7 @@ Explain this topic like I'm 5 years old. Use:
 - Maybe a little story to illustrate
 
 Topic from notes: {req.topic}
-Use the same language as the notes."""},
+Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=30, max_tokens=2000
@@ -414,7 +423,7 @@ Compare these two documents. Provide:
 4. 🎨 Unique to Doc 2 (only in second document)
 5. 💡 Synthesis (combined insights)
 
-Use the same language as the documents (prefer Doc 1's language)."""},
+Use the same language as the documents. Default to English if unclear."""},
                 {"role": "user", "content": f"""DOCUMENT 1:
 {notes1[:8000]}
 
@@ -449,7 +458,7 @@ Provide:
 7. 🎯 Specific Feedback: [line-by-line suggestions]
 8. 📈 Improvement Plan: [how to get a better score next time]
 
-Use the same language as the essay/notes."""},
+Use the same language as the essay/notes. Default to English if unclear."""},
                 {"role": "user", "content": f"""NOTES/CONTEXT:
 {notes[:5000]}
 
@@ -482,7 +491,7 @@ DO NOT just give the answer. Instead:
 5. 💡 Similar practice problem for student to try
 
 Subject: {req.subject}
-Use the same language as the notes/question."""},
+Use the same language as the notes/question. Default to English if unclear."""},
                 {"role": "user", "content": f"""NOTES:
 {notes[:5000]}
 
@@ -514,7 +523,7 @@ Format each as:
 🎯 When to use: [application context]
 💡 Example: [worked example]
 
-Create a clean, organized formula sheet. Use the same language as the notes."""},
+Create a clean, organized formula sheet. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -542,7 +551,7 @@ Format:
 ├─ 📌 Must Remember: [critical info]
 └─ ❓ Likely Exam Questions: [predicted questions]
 
-Make {req.count} chapters. Use the same language as the notes."""},
+Make {req.count} chapters. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -569,7 +578,7 @@ Format each as:
 🔄 In Simple Words: [everyday language version]
 🎯 Why it matters: [context]
 
-Find exactly {req.count} words. Use the same language as the notes."""},
+Find exactly {req.count} words. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -595,7 +604,7 @@ Sentence: [sentence with _____ for blank]
 Answer: [correct word/phrase]
 Hint: [subtle clue]
 
-Make blanks test important concepts, not trivial words. Use the same language as the notes."""},
+Make blanks test important concepts, not trivial words. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -621,7 +630,7 @@ Statement: [statement]
 Answer: True/False
 Explanation: [why it's true or false, with reference to notes]
 
-Mix true and false statements evenly. Use the same language as the notes."""},
+Mix true and false statements evenly. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -648,7 +657,7 @@ Expected Answer: [model answer in 2-4 sentences]
 Key Points to Include: [bullet points]
 Grading Rubric: [what makes a good answer]
 
-Questions should require understanding, not just memorization. Use the same language as the notes."""},
+Questions should require understanding, not just memorization. Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -688,7 +697,7 @@ Debate both sides of this topic based on the notes. Provide:
 ├─ Critical Analysis: [nuanced perspective]
 └─ Your Take: [reasoned conclusion]
 
-Use the same language as the notes."""},
+Use the same language as the notes. Default to English if unclear."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
