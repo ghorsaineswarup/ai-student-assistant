@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import axios from "axios"
 
-const API = "https://ai-student-assistant-production-23a7.up.railway.app"
+const API = "https://ai-student-assistant-g0wl.onrender.com"
 
 const COLORS = { purple: "#8b5cf6", pink: "#ec4899", green: "#10b981", amber: "#f59e0b", blue: "#3b82f6" }
 
@@ -136,8 +136,9 @@ function Timer() {
   }, [running])
   const reset = () => { setRunning(false); setMinutes(mode==="work"?25:5); setSeconds(0) }
   const switchMode = m => { setMode(m); setRunning(false); setMinutes(m==="work"?25:5); setSeconds(0) }
-  const total = (mode==="work"?25:5)*60, elapsed = total-(minutes*60+seconds)
-  const pct = elapsed/total, r=52, circ=2*Math.PI*r, col=mode==="work"?COLORS.purple:COLORS.green
+  const total = (mode==="work"?25:5)*60
+  const pct = (total-(minutes*60+seconds))/total
+  const r=52, circ=2*Math.PI*r, col=mode==="work"?COLORS.purple:COLORS.green
   return (
     <div style={{ background: "#111118", border: "1.5px solid #1e1e2e", borderRadius: 18, padding: 24, marginBottom: 20, textAlign: "center" }}>
       <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 20 }}>
@@ -172,14 +173,7 @@ function Timer() {
   )
 }
 
-const FILE_TYPES = {
-  "pdf": { icon: "📄", label: "PDF", accept: ".pdf" },
-  "txt": { icon: "📝", label: "Text", accept: ".txt" },
-  "docx": { icon: "📘", label: "Word", accept: ".docx" },
-  "pptx": { icon: "📊", label: "PowerPoint", accept: ".pptx" },
-  "png,jpg,jpeg": { icon: "🖼", label: "Image", accept: ".png,.jpg,.jpeg" },
-  "csv": { icon: "📋", label: "CSV", accept: ".csv" },
-}
+const accept = ".pdf,.txt,.docx,.pptx,.png,.jpg,.jpeg,.csv"
 
 export default function App() {
   const [sessions, setSessions] = useState([])
@@ -209,7 +203,9 @@ export default function App() {
       setSessions(prev => prev.find(s => s.id===sid) ? prev : [...prev, { id: sid, name: file.name }])
       setMessages([{ role: "assistant", text: `✅ "${file.name}" uploaded! Ask me anything about it.` }])
       setActiveTab("chat"); setOutput("")
-    } catch { setMessages([{ role: "assistant", text: "❌ Upload failed. Make sure the file type is supported." }]) }
+    } catch {
+      setMessages([{ role: "assistant", text: "❌ Upload failed. Please try again." }])
+    }
     setUploading(false)
   }
 
@@ -221,7 +217,9 @@ export default function App() {
     try {
       const res = await axios.post(`${API}/chat`, { session_id: sessionId, question: q })
       setMessages(prev => [...prev, { role: "assistant", text: res.data.answer }])
-    } catch { setMessages(prev => [...prev, { role: "assistant", text: "❌ Error. Please try again." }]) }
+    } catch {
+      setMessages(prev => [...prev, { role: "assistant", text: "❌ Error. Please try again." }])
+    }
     setLoading(false)
   }
 
@@ -232,7 +230,7 @@ export default function App() {
       const res = await axios.post(`${API}/${action}`, { session_id: sessionId, count })
       const key = action==="summarize"?"summary":action==="quiz"?"quiz":"flashcards"
       setOutput(res.data[key])
-    } catch { setOutput("Error generating content.") }
+    } catch { setOutput("Error generating content. Please try again.") }
     setLoading(false)
   }
 
@@ -242,13 +240,10 @@ export default function App() {
     a.download = "summary.txt"; a.click()
   }
 
-  const accept = Object.values(FILE_TYPES).map(f => f.accept).join(",")
-
   return (
     <div style={{ minHeight: "100vh", background: "#07070f", color: "#eeeef5", fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
       <div style={{ maxWidth: 920, margin: "0 auto", padding: "2rem 1.5rem" }}>
 
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28 }}>
           <div>
             <h1 style={{ fontSize: 30, fontWeight: 800, background: "linear-gradient(135deg, #8b5cf6, #ec4899)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 4 }}>
@@ -264,17 +259,14 @@ export default function App() {
 
         {showTimer && <Timer />}
 
-        {/* Upload area */}
         <div style={{ background: "#111118", border: sessionId?"1.5px solid #8b5cf640":"1.5px dashed #1e1e2e", borderRadius: 18, padding: 24, marginBottom: 20 }}>
           {!sessionId ? (
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: 36, marginBottom: 8 }}>📚</p>
               <p style={{ color: "#444", marginBottom: 6, fontSize: 14 }}>Upload any study material</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 16 }}>
-                {Object.values(FILE_TYPES).map(f => (
-                  <span key={f.label} style={{ padding: "4px 12px", background: "#0a0a12", border: "1px solid #1e1e2e", borderRadius: 20, fontSize: 12, color: "#555" }}>
-                    {f.icon} {f.label}
-                  </span>
+                {["📄 PDF","📝 Text","📘 Word","📊 PowerPoint","🖼 Image","📋 CSV"].map(f => (
+                  <span key={f} style={{ padding: "4px 12px", background: "#0a0a12", border: "1px solid #1e1e2e", borderRadius: 20, fontSize: 12, color: "#555" }}>{f}</span>
                 ))}
               </div>
               <label style={{ cursor: "pointer", background: "linear-gradient(135deg, #8b5cf6, #ec4899)", padding: "10px 28px", borderRadius: 10, fontSize: 14, color: "#fff", fontWeight: 700 }}>
@@ -299,7 +291,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Count + Action buttons */}
         {sessionId && (
           <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ color: "#333", fontSize: 12 }}>count:</span>
@@ -319,7 +310,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Tab row */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button onClick={() => setActiveTab("chat")}
             style={{ padding: "8px 18px", borderRadius: 10, border: `1.5px solid ${activeTab==="chat"?"#8b5cf6":"#1e1e2e"}`, fontSize: 13, fontWeight: 700, cursor: "pointer", background: activeTab==="chat"?"#8b5cf622":"#111118", color: activeTab==="chat"?"#8b5cf6":"#444" }}>
@@ -333,7 +323,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Chat */}
         {activeTab === "chat" && (
           <>
             <div style={{ background: "#111118", border: "1.5px solid #1e1e2e", borderRadius: 18, padding: 20, minHeight: 300, marginBottom: 14, overflowY: "auto", maxHeight: 420 }}>
@@ -371,7 +360,6 @@ export default function App() {
           </>
         )}
 
-        {/* Output */}
         {activeTab !== "chat" && (
           <div style={{ background: "#111118", border: "1.5px solid #1e1e2e", borderRadius: 18, padding: 24 }}>
             {loading ? (
@@ -379,7 +367,7 @@ export default function App() {
                 <div style={{ display: "flex", gap: 6, justifyContent: "center", marginBottom: 16 }}>
                   {[0,1,2].map(i => <div key={i} style={{ width: 10, height: 10, borderRadius: "50%", background: "#8b5cf6", animation: `bounce 1s ${i*0.2}s infinite` }} />)}
                 </div>
-                <p style={{ color: "#333", fontSize: 14 }}>generating {count} {outputType === "flashcards" ? "flashcards" : outputType === "quiz" ? "questions" : "summary"}...</p>
+                <p style={{ color: "#333", fontSize: 14 }}>generating {count} {outputType==="flashcards"?"flashcards":outputType==="quiz"?"questions":"summary"}...</p>
               </div>
             ) : output ? (
               <>
