@@ -24,7 +24,7 @@ async function wakeUpServer() {
 
 // ==================== VIEW COMPONENTS ====================
 
-function FlashcardView({ raw }) {
+function FlashcardView({ raw, resetKey }) {
   const cards = raw.split("---").map(c => c.trim()).filter(Boolean).map(card => {
     const f = card.match(/Front:\s*(.+)/i)
     const b = card.match(/Back:\s*([\s\S]+)/i)
@@ -34,6 +34,12 @@ function FlashcardView({ raw }) {
   const [flipped, setFlipped] = useState(false)
   const cols = [COLORS.purple, COLORS.pink, COLORS.green, COLORS.amber, COLORS.blue]
   const col = cols[cur % cols.length]
+
+  // Reset when new flashcards load
+  useEffect(() => {
+    setCur(0)
+    setFlipped(false)
+  }, [resetKey])
 
   if (!cards.length) return <p style={{ color: "#444", textAlign: "center", padding: 40 }}>No flashcards found.</p>
 
@@ -83,6 +89,13 @@ function QuizView({ raw }) {
   const blocks = raw.split(/\n(?=Q\d*[:.])/i).map(b => b.trim()).filter(Boolean)
   const [answers, setAnswers] = useState({})
   const [revealed, setRevealed] = useState({})
+  
+  // Reset when new quiz loads
+  useEffect(() => {
+    setAnswers({})
+    setRevealed({})
+  }, [raw])
+  
   const score = Object.keys(revealed).filter(i => {
     const correct = blocks[i].split("\n").find(l => /^Answer:/i.test(l))?.replace(/Answer:/i, "").trim()
     return answers[i] === correct
@@ -305,14 +318,14 @@ export default function App() {
   const [showTimer, setShowTimer] = useState(false)
   const [count, setCount] = useState(5)
   const [serverReady, setServerReady] = useState(false)
-  const [showFeatures, setShowFeatures] = useState(false)
+  const [activeCategory, setActiveCategory] = useState("all")
   const [essayText, setEssayText] = useState("")
   const [homeworkQ, setHomeworkQ] = useState("")
   const [homeworkSubject, setHomeworkSubject] = useState("general")
   const [eli5Topic, setEli5Topic] = useState("")
   const [debateTopic, setDebateTopic] = useState("")
   const [compareId, setCompareId] = useState("")
-  const [activeCategory, setActiveCategory] = useState("all")
+  const [outputKey, setOutputKey] = useState(0) // For forcing reset
   const chatEndRef = useRef(null)
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
@@ -359,7 +372,8 @@ export default function App() {
     setQuestion("")
     setLoading(true)
     try {
-      const res = await api.post("/chat", { session_id: sessionId, question: q })
+      // FORCE ENGLISH for chat
+      const res = await api.post("/chat", { session_id: sessionId, question: q, language: "en" })
       setMessages(prev => [...prev, { role: "assistant", text: res.data.answer }])
     } catch (err) {
       setMessages(prev => [...prev, { role: "assistant", text: "❌ " + (err.response?.data?.detail || "Server error. Please try again.") }])
@@ -369,27 +383,30 @@ export default function App() {
 
   const doAction = async (action, extraData = {}) => {
     if (!sessionId && action !== "compare") return
-    setLoading(true); setOutput(""); setOutputType(action); setActiveTab(action)
+    setLoading(true); setOutput(""); setOutputType(action); setActiveTab(action); setOutputKey(k => k + 1)
     try {
       let res
+      let payload = { session_id: sessionId, count, language: "en" } // FORCE ENGLISH
+      
       if (action === "compare") {
         if (!compareId) { setOutput("❌ Select a second document to compare"); setLoading(false); return }
         res = await api.post("/compare", { session_id_1: sessionId, session_id_2: compareId })
       } else if (action === "essay_grade") {
         if (!essayText.trim()) { setOutput("❌ Paste your essay first"); setLoading(false); return }
-        res = await api.post("/essay_grade", { session_id: sessionId, essay_text: essayText })
+        res = await api.post("/essay_grade", { session_id: sessionId, essay_text: essayText, language: "en" })
       } else if (action === "homework_help") {
         if (!homeworkQ.trim()) { setOutput("❌ Enter your homework question"); setLoading(false); return }
-        res = await api.post("/homework_help", { session_id: sessionId, question: homeworkQ, subject: homeworkSubject })
+        res = await api.post("/homework_help", { session_id: sessionId, question: homeworkQ, subject: homeworkSubject, language: "en" })
       } else if (action === "eli5") {
         if (!eli5Topic.trim()) { setOutput("❌ Enter a topic to explain"); setLoading(false); return }
-        res = await api.post("/eli5", { session_id: sessionId, topic: eli5Topic })
+        res = await api.post("/eli5", { session_id: sessionId, topic: eli5Topic, language: "en" })
       } else if (action === "debate") {
         if (!debateTopic.trim()) { setOutput("❌ Enter a debate topic"); setLoading(false); return }
-        res = await api.post("/debate", { session_id: sessionId, topic: debateTopic })
+        res = await api.post("/debate", { session_id: sessionId, topic: debateTopic, language: "en" })
       } else {
-        res = await api.post(`/${action}`, { session_id: sessionId, count })
+        res = await api.post(`/${action}`, payload)
       }
+      
       const keyMap = {
         summarize: "summary", quiz: "quiz", flashcards: "flashcards",
         exam_predictor: "exam_predictor", study_plan: "study_plan",
@@ -529,7 +546,7 @@ export default function App() {
     const icon = feature?.icon || "📝"
     const title = feature?.label || outputType
 
-    if (outputType === "flashcards") return <FlashcardView raw={output} />
+    if (outputType === "flashcards") return <FlashcardView raw={output} resetKey={outputKey} />
     if (outputType === "quiz") return <QuizView raw={output} />
     if (outputType === "summarize") return <SummaryView text={output} onDownload={downloadOutput} />
     if (outputType === "essay_grade") return <EssayGradeView raw={output} />
