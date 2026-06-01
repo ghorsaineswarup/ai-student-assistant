@@ -7,3 +7,8 @@ python-dotenv
 pymupdf
 python-docx
 python-pptx
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
