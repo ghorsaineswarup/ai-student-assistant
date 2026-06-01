@@ -26,7 +26,7 @@ function FlashcardView({ raw }) {
     
 
       
- setFlipped(prev => ({ ...prev, [cur]: !prev[cur] }))}
+<div onClick={() => setFlipped(prev => ({ ...prev, [cur]: !prev[cur] }))}
         style={{
           cursor: "pointer", minHeight: 220, marginBottom: 24,
           background: isFlipped ? p.bg : "#0d0d14",
