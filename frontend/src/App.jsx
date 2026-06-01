@@ -700,7 +700,7 @@ export default function App() {
         )}
 
         <div onDragOver={e=>{e.preventDefault();setDragOver(true)}} onDragLeave={()=>setDragOver(false)} onDrop={onDrop}
-          onClick={()=>!sessionId&&fileRef.current?.click()}
+          
           style={{ background:P.surface, border:`1.5px ${dragOver?"solid":"dashed"} ${dragOver?P.violet+"88":sessionId?P.purple+"33":P.border}`, borderRadius:20, padding:"26px 28px", marginBottom:24, position:"relative", overflow:"hidden", cursor:!sessionId?"pointer":"default", transition:"all 0.25s", boxShadow:dragOver?`0 0 40px ${P.purple}18`:"none" }}>
           {sessionId && <div style={{ position:"absolute", top:0, left:0, right:0, height:2, background:`linear-gradient(90deg,${P.purple},${P.pink},${P.green},${P.amber},${P.blue})` }} />}
           <input ref={fileRef} type="file" accept={ACCEPT} onChange={onFileChange} style={{ display:"none" }} />
