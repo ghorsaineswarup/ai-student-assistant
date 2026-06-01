@@ -153,7 +153,7 @@ async def chat(req: ChatRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are a helpful study assistant. Answer questions based on these notes:
@@ -178,7 +178,7 @@ async def summarize(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are a study assistant. Summarize the following notes clearly with key points and main ideas.
@@ -201,7 +201,7 @@ async def generate_quiz(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Generate exactly {req.count} multiple choice questions from these notes.
@@ -233,7 +233,7 @@ async def generate_flashcards(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create exactly {req.count} flashcards from these notes.
@@ -262,7 +262,7 @@ async def exam_predictor(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are an expert exam predictor. Based on these notes, predict {req.count} questions that are MOST LIKELY to appear on an exam.
@@ -290,7 +290,7 @@ async def study_plan(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create a 7-day study plan based on these notes. Each day should have:
@@ -318,7 +318,7 @@ async def key_terms(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Extract exactly {req.count} key terms and definitions from these notes.
@@ -345,7 +345,7 @@ async def mind_map(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create a text-based mind map structure from these notes.
@@ -375,7 +375,7 @@ async def eli5(req: ELI5Request):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Explain this topic like I'm 5 years old. Use:
@@ -404,7 +404,7 @@ async def compare_docs(req: CompareRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Compare these two documents. Provide:
@@ -435,7 +435,7 @@ async def essay_grade(req: EssayRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are an expert essay grader. Grade this essay based on the notes/context provided.
@@ -470,7 +470,7 @@ async def homework_help(req: HomeworkRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are a patient homework tutor. Help solve this homework problem step-by-step.
@@ -503,7 +503,7 @@ async def formula_sheet(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Extract all formulas, equations, and mathematical/scientific relationships from these notes.
@@ -531,7 +531,7 @@ async def chapter_summary(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Divide these notes into logical chapters/sections and summarize each one.
@@ -559,7 +559,7 @@ async def simplify_words(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Find difficult or technical words in these notes and simplify them.
@@ -586,7 +586,7 @@ async def fill_blanks(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create exactly {req.count} fill-in-the-blank questions from these notes.
@@ -612,7 +612,7 @@ async def true_false(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create exactly {req.count} True/False questions from these notes.
@@ -638,7 +638,7 @@ async def short_answer(req: ActionRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Create exactly {req.count} short answer questions from these notes.
@@ -665,7 +665,7 @@ async def debate(req: DebateRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 Debate both sides of this topic based on the notes. Provide:
