@@ -13,6 +13,15 @@ const api = axios.create({
   timeout: 90000,
 })
 
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token")
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
 async function wakeUpServer() {
   try {
     await api.get("/health")
@@ -35,7 +44,6 @@ function FlashcardView({ raw, resetKey }) {
   const cols = [COLORS.purple, COLORS.pink, COLORS.green, COLORS.amber, COLORS.blue]
   const col = cols[cur % cols.length]
 
-  // Reset when new flashcards load
   useEffect(() => {
     setCur(0)
     setFlipped(false)
@@ -90,7 +98,6 @@ function QuizView({ raw }) {
   const [answers, setAnswers] = useState({})
   const [revealed, setRevealed] = useState({})
   
-  // Reset when new quiz loads
   useEffect(() => {
     setAnswers({})
     setRevealed({})
@@ -279,6 +286,74 @@ function Timer() {
   )
 }
 
+// ==================== AUTH MODAL ====================
+
+function AuthModal({ onClose, onLogin }) {
+  const [isSignup, setIsSignup] = useState(false)
+  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError("")
+    try {
+      if (isSignup) {
+        const res = await api.post("/signup", { username, email, password })
+        localStorage.setItem("token", res.data.access_token)
+      } else {
+        const formData = new URLSearchParams()
+        formData.append("username", username)
+        formData.append("password", password)
+        const res = await api.post("/token", formData, {
+          headers: { "Content-Type": "application/x-www-form-urlencoded" }
+        })
+        localStorage.setItem("token", res.data.access_token)
+      }
+      onLogin()
+      onClose()
+    } catch (err) {
+      setError(err.response?.data?.detail || "Something went wrong")
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.8)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 1000 }}>
+      <div style={{ background: "#111118", border: "2px solid #1e1e2e", borderRadius: 24, padding: 40, width: "90%", maxWidth: 400 }}>
+        <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 24, color: "#f0f0f5" }}>{isSignup ? "Create Account" : "Welcome Back"}</h2>
+        <form onSubmit={handleSubmit}>
+          <input value={username} onChange={e => setUsername(e.target.value)} placeholder="Username" required
+            style={{ width: "100%", padding: "14px 18px", marginBottom: 12, background: "#0d0d1a", border: "2px solid #1e1e2e", borderRadius: 12, color: "#f0f0f5", fontSize: 14, outline: "none" }} />
+          {isSignup && (
+            <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" type="email" required
+              style={{ width: "100%", padding: "14px 18px", marginBottom: 12, background: "#0d0d1a", border: "2px solid #1e1e2e", borderRadius: 12, color: "#f0f0f5", fontSize: 14, outline: "none" }} />
+          )}
+          <input value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" type="password" required
+            style={{ width: "100%", padding: "14px 18px", marginBottom: 20, background: "#0d0d1a", border: "2px solid #1e1e2e", borderRadius: 12, color: "#f0f0f5", fontSize: 14, outline: "none" }} />
+          {error && <p style={{ color: "#ef4444", fontSize: 13, marginBottom: 12 }}>{error}</p>}
+          <button type="submit" disabled={loading}
+            style={{ width: "100%", padding: "14px", background: "linear-gradient(135deg, #8b5cf6, #ec4899)", border: "none", borderRadius: 12, color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+            {loading ? "⏳..." : isSignup ? "Sign Up" : "Log In"}
+          </button>
+        </form>
+        <p style={{ textAlign: "center", marginTop: 20, color: "#666", fontSize: 13 }}>
+          {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
+          <span onClick={() => setIsSignup(!isSignup)} style={{ color: "#8b5cf6", cursor: "pointer", fontWeight: 600 }}>
+            {isSignup ? "Log In" : "Sign Up"}
+          </span>
+        </p>
+        <button onClick={onClose} style={{ marginTop: 16, width: "100%", padding: "10px", background: "transparent", border: "2px solid #1e1e2e", borderRadius: 12, color: "#444", cursor: "pointer", fontSize: 13 }}>
+          Continue as Guest
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ==================== MAIN APP ====================
 
 const accept = ".pdf,.txt,.docx,.pptx,.png,.jpg,.jpeg,.csv"
@@ -325,7 +400,11 @@ export default function App() {
   const [eli5Topic, setEli5Topic] = useState("")
   const [debateTopic, setDebateTopic] = useState("")
   const [compareId, setCompareId] = useState("")
-  const [outputKey, setOutputKey] = useState(0) // For forcing reset
+  const [outputKey, setOutputKey] = useState(0)
+  const [showAuth, setShowAuth] = useState(false)
+  const [user, setUser] = useState(null)
+  const [savedItems, setSavedItems] = useState([])
+  const [showSaved, setShowSaved] = useState(false)
   const chatEndRef = useRef(null)
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }) }, [messages])
@@ -334,6 +413,16 @@ export default function App() {
     wakeUpServer().then(ok => setServerReady(ok))
     const interval = setInterval(() => wakeUpServer().then(ok => setServerReady(ok)), 30000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("token")
+    if (token) {
+      api.get("/me").then(res => setUser(res.data)).catch(() => {
+        localStorage.removeItem("token")
+      })
+    }
   }, [])
 
   const uploadFile = async (e) => {
@@ -372,7 +461,6 @@ export default function App() {
     setQuestion("")
     setLoading(true)
     try {
-      // FORCE ENGLISH for chat
       const res = await api.post("/chat", { session_id: sessionId, question: q, language: "en" })
       setMessages(prev => [...prev, { role: "assistant", text: res.data.answer }])
     } catch (err) {
@@ -386,7 +474,7 @@ export default function App() {
     setLoading(true); setOutput(""); setOutputType(action); setActiveTab(action); setOutputKey(k => k + 1)
     try {
       let res
-      let payload = { session_id: sessionId, count, language: "en" } // FORCE ENGLISH
+      let payload = { session_id: sessionId, count, language: "en" }
       
       if (action === "compare") {
         if (!compareId) { setOutput("❌ Select a second document to compare"); setLoading(false); return }
@@ -427,6 +515,39 @@ export default function App() {
     }
     setLoading(false)
   }
+
+  const saveContent = async () => {
+    if (!user) {
+      setShowAuth(true)
+      return
+    }
+    try {
+      await api.post("/save", {
+        type: outputType,
+        title: `${outputType} - ${sessionId}`,
+        content: output,
+        session_id: sessionId
+      })
+      alert("✅ Saved to your account!")
+      loadSavedItems()
+    } catch (err) {
+      alert("❌ Failed to save")
+    }
+  }
+
+  const loadSavedItems = async () => {
+    if (!user) return
+    try {
+      const res = await api.get("/saved")
+      setSavedItems(res.data)
+    } catch (err) {
+      console.error("Failed to load saved items")
+    }
+  }
+
+  useEffect(() => {
+    if (user) loadSavedItems()
+  }, [user])
 
   const downloadOutput = () => {
     const a = document.createElement("a")
@@ -546,18 +667,31 @@ export default function App() {
     const icon = feature?.icon || "📝"
     const title = feature?.label || outputType
 
-    if (outputType === "flashcards") return <FlashcardView raw={output} resetKey={outputKey} />
-    if (outputType === "quiz") return <QuizView raw={output} />
-    if (outputType === "summarize") return <SummaryView text={output} onDownload={downloadOutput} />
-    if (outputType === "essay_grade") return <EssayGradeView raw={output} />
-    if (["chat", "exam_predictor", "study_plan", "key_terms", "mind_map", "eli5", "compare", "homework_help", "formula_sheet", "chapter_summary", "simplify_words", "fill_blanks", "true_false", "short_answer", "debate"].includes(outputType)) {
-      return <TextView text={output} title={title} icon={icon} />
-    }
-    return <TextView text={output} title={title} icon={icon} />
+    return (
+      <div>
+        {outputType === "flashcards" && <FlashcardView raw={output} resetKey={outputKey} />}
+        {outputType === "quiz" && <QuizView raw={output} />}
+        {outputType === "summarize" && <SummaryView text={output} onDownload={downloadOutput} />}
+        {outputType === "essay_grade" && <EssayGradeView raw={output} />}
+        {["chat", "exam_predictor", "study_plan", "key_terms", "mind_map", "eli5", "compare", "homework_help", "formula_sheet", "chapter_summary", "simplify_words", "fill_blanks", "true_false", "short_answer", "debate"].includes(outputType) && (
+          <TextView text={output} title={title} icon={icon} />
+        )}
+        {user && output && !output.startsWith("⏱") && !output.startsWith("❌") && (
+          <button onClick={saveContent}
+            style={{ marginTop: 20, padding: "10px 22px", background: "#0a1f0a", border: "2px solid #10b981", borderRadius: 12, color: "#10b981", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+            💾 Save to My Account
+          </button>
+        )}
+      </div>
+    )
   }
 
   return (
     <div style={{ minHeight: "100vh", background: "#07070f", color: "#eeeef5", fontFamily: "'DM Sans','Segoe UI',sans-serif" }}>
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} onLogin={() => {
+        api.get("/me").then(res => setUser(res.data))
+      }} />}
+      
       <div style={{ maxWidth: 1000, margin: "0 auto", padding: "2rem 1.5rem" }}>
 
         {/* HEADER */}
@@ -573,6 +707,24 @@ export default function App() {
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: serverReady ? "#10b981" : "#ef4444", animation: serverReady ? "none" : "pulse 1.5s infinite" }} />
               {serverReady ? "online" : "waking up..."}
             </div>
+            {user ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span style={{ color: "#8b5cf6", fontSize: 13, fontWeight: 600 }}>👤 {user.username}</span>
+                <button onClick={() => setShowSaved(!showSaved)}
+                  style={{ padding: "8px 14px", background: showSaved ? "#8b5cf618" : "#111118", border: `2px solid ${showSaved ? "#8b5cf6" : "#1e1e2e"}`, borderRadius: 10, color: showSaved ? "#8b5cf6" : "#444", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                  💾 Saved
+                </button>
+                <button onClick={() => { localStorage.removeItem("token"); setUser(null); setSavedItems([]) }}
+                  style={{ padding: "8px 14px", background: "#1f0a0a", border: "2px solid #ef4444", borderRadius: 10, color: "#ef4444", cursor: "pointer", fontSize: 12, fontWeight: 700 }}>
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setShowAuth(true)}
+                style={{ padding: "10px 18px", background: "#8b5cf618", border: "2px solid #8b5cf6", borderRadius: 12, color: "#8b5cf6", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+                Login / Sign Up
+              </button>
+            )}
             <button onClick={() => setShowTimer(t => !t)}
               style={{ padding: "10px 18px", background: showTimer ? "#8b5cf618" : "#111118", border: `2px solid ${showTimer ? "#8b5cf6" : "#1e1e2e"}`, borderRadius: 12, color: showTimer ? "#8b5cf6" : "#444", cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
               ⏱ timer
@@ -581,6 +733,33 @@ export default function App() {
         </div>
 
         {showTimer && <Timer />}
+
+        {/* SAVED ITEMS SIDEBAR */}
+        {showSaved && user && (
+          <div style={{ background: "#111118", border: "2px solid #1e1e2e", borderRadius: 20, padding: 24, marginBottom: 24 }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, color: "#f0f0f5" }}>💾 My Saved Content</h3>
+            {savedItems.length === 0 ? (
+              <p style={{ color: "#444", fontSize: 14 }}>No saved items yet. Generate content and click "Save to My Account"</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {savedItems.map(item => (
+                  <div key={item.id} style={{ padding: "12px 16px", background: "#0d0d1a", borderRadius: 12, border: "1.5px solid #1e1e2e" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: "#c4b5fd" }}>{item.type}</p>
+                        <p style={{ fontSize: 12, color: "#555" }}>{item.title}</p>
+                      </div>
+                      <button onClick={() => { setOutput(item.content); setOutputType(item.type); setActiveTab(item.type); setShowSaved(false) }}
+                        style={{ padding: "6px 14px", background: "#8b5cf6", border: "none", borderRadius: 8, color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>
+                        View
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* UPLOAD */}
         <div style={{ background: "linear-gradient(135deg, #111118, #0d0d1a)", border: sessionId ? "2px solid #8b5cf630" : "2px dashed #1e1e2e", borderRadius: 24, padding: 32, marginBottom: 24, transition: "all 0.3s" }}>
