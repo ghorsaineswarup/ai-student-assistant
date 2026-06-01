@@ -1,8 +1,9 @@
 fastapi
 uvicorn
-pymupdf
+python-multipart
+pydantic
 openai
 python-dotenv
-python-multipart
-docx2txt
+pymupdf
+python-docx
 python-pptx
