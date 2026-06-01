@@ -30,6 +30,7 @@ class ChatRequest(BaseModel):
 
 class ActionRequest(BaseModel):
     session_id: str
+    count: int = 5
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -64,7 +65,7 @@ async def summarize(req: ActionRequest):
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "You are a study assistant. Summarize the following notes clearly and concisely."},
+            {"role": "system", "content": "You are a study assistant. Summarize the following notes clearly and concisely with key points, main ideas, and important details."},
             {"role": "user", "content": notes}
         ]
     )
@@ -78,7 +79,7 @@ async def generate_quiz(req: ActionRequest):
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Generate 5 multiple choice questions from these notes. Format each as: Q: question\nA) option\nB) option\nC) option\nD) option\nAnswer: X"},
+            {"role": "system", "content": f"Generate exactly {req.count} multiple choice questions from these notes. Format each as:\nQ: question\nA) option\nB) option\nC) option\nD) option\nAnswer: X\n\nSeparate each question with a blank line."},
             {"role": "user", "content": notes}
         ]
     )
@@ -92,7 +93,7 @@ async def generate_flashcards(req: ActionRequest):
     response = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {"role": "system", "content": "Create 5 flashcards from these notes. Format each as: Front: question\nBack: answer\n---"},
+            {"role": "system", "content": f"Create exactly {req.count} flashcards from these notes. Format each as:\nFront: question\nBack: answer\n---"},
             {"role": "user", "content": notes}
         ]
     )
