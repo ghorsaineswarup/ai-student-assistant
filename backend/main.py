@@ -29,26 +29,66 @@ client = OpenAI(
 stored_text = {}
 MAX_NOTES_LENGTH = 45000
 
-LANGUAGE_INSTRUCTION = """
-You can detect and respond in the user's language automatically.
-Supported languages: Nepali, Hindi, English, Spanish, French, German,
-Italian, Portuguese, Russian, Chinese, Japanese, Korean, Arabic, Turkish,
-Dutch, Polish, Swedish, Norwegian, Danish, Finnish, Bengali, Urdu,
-Tagalog, Cebuano, Visayan, Malay, Indonesian, Vietnamese, Thai, Swahili.
+# Top 30 world languages + Nepali + Tagalog + Cebuano + Bisaya
+SUPPORTED_LANGUAGES = [
+    "English", "Mandarin Chinese", "Spanish", "Hindi", "Arabic",
+    "French", "Bengali", "Portuguese", "Russian", "Urdu",
+    "Indonesian", "German", "Japanese", "Swahili", "Marathi",
+    "Telugu", "Turkish", "Tamil", "Vietnamese", "Korean",
+    "Italian", "Thai", "Gujarati", "Polish", "Ukrainian",
+    "Malayalam", "Kannada", "Oriya", "Punjabi", "Persian",
+    "Nepali", "Tagalog", "Cebuano", "Bisaya"
+]
 
-Rules:
-- Detect the language of the user's message automatically
-- Respond in that exact same language always
-- If the user writes in Nepali → respond in Nepali
-- If the user writes in Tagalog → respond in Tagalog
-- If the user writes in Cebuano → respond in Cebuano
-- If the user writes in Visayan → respond in Visayan
-- If the user writes in Hindi → respond in Hindi
-- If notes are in a different language than the question, still answer in the question's language
-- For quiz and flashcards, use the same language as the notes
-- Never mix languages in one response
-- IMPORTANT: If the user does not specify a language, DEFAULT to English
-- If notes are in English and user asks in English, respond in English
+LANGUAGE_INSTRUCTION = f"""
+You are a multilingual study assistant supporting these languages: {', '.join(SUPPORTED_LANGUAGES)}.
+
+CRITICAL LANGUAGE RULES:
+1. Detect the language of the USER'S QUESTION/INPUT (not the notes)
+2. Respond in the EXACT SAME language as the user's question
+3. If user writes in English → respond in English
+4. If user writes in Nepali → respond in Nepali
+5. If user writes in Tagalog → respond in Tagalog
+6. If user writes in Cebuano → respond in Cebuano
+7. If user writes in Bisaya → respond in Bisaya
+8. If user writes in Hindi → respond in Hindi
+9. If user writes in Spanish → respond in Spanish
+10. If user writes in German → respond in German
+11. If user writes in French → respond in French
+12. If user writes in Chinese → respond in Chinese
+13. If user writes in Japanese → respond in Japanese
+14. If user writes in Korean → respond in Korean
+15. If user writes in Arabic → respond in Arabic
+16. If user writes in Portuguese → respond in Portuguese
+17. If user writes in Russian → respond in Russian
+18. If user writes in Italian → respond in Italian
+19. If user writes in Dutch → respond in Dutch
+20. If user writes in Swedish → respond in Swedish
+21. If user writes in Norwegian → respond in Norwegian
+22. If user writes in Danish → respond in Danish
+23. If user writes in Finnish → respond in Finnish
+24. If user writes in Polish → respond in Polish
+25. If user writes in Turkish → respond in Turkish
+26. If user writes in Indonesian → respond in Indonesian
+27. If user writes in Malay → respond in Malay
+28. If user writes in Vietnamese → respond in Vietnamese
+29. If user writes in Thai → respond in Thai
+30. If user writes in Swahili → respond in Swahili
+31. If user writes in Bengali → respond in Bengali
+32. If user writes in Urdu → respond in Urdu
+33. If user writes in Marathi → respond in Marathi
+34. If user writes in Tamil → respond in Tamil
+35. If user writes in Telugu → respond in Telugu
+
+FOR QUIZ AND FLASHCARDS:
+- Use the SAME language as the NOTES (not the question)
+- If notes are in English → quiz in English
+- If notes are in Nepali → quiz in Nepali
+- If notes are in Tagalog → quiz in Tagalog
+
+NEVER mix languages in one response.
+NEVER respond in Nepali if the user asked in English.
+NEVER respond in Hindi if the user asked in English.
 """
 
 class ChatRequest(BaseModel):
@@ -99,6 +139,7 @@ def root():
             "formula_sheet", "chapter_summary", "simplify_words",
             "fill_blanks", "true_false", "short_answer", "debate"
         ],
+        "languages": SUPPORTED_LANGUAGES,
         "health": "/health"
     }
 
@@ -169,7 +210,13 @@ You are a helpful study assistant. Answer questions based on these notes:
 
 {notes}
 
-Important: Detect the language of the user's question and respond in that exact same language. Default to English if unclear."""},
+CRITICAL: Detect the language of the user's question below and respond in that EXACT language.
+If the user wrote in English, you MUST respond in English.
+If the user wrote in Nepali, you MUST respond in Nepali.
+If the user wrote in Tagalog, you MUST respond in Tagalog.
+If the user wrote in Cebuano, you MUST respond in Cebuano.
+If the user wrote in Bisaya, you MUST respond in Bisaya.
+Do NOT use the language of the notes. Use the language of the user's question."""},
                 {"role": "user", "content": req.question}
             ],
             timeout=30, max_tokens=2000
@@ -192,7 +239,14 @@ async def summarize(req: ActionRequest):
                 {"role": "system", "content": f"""{LANGUAGE_INSTRUCTION}
 You are a study assistant. Summarize the following notes clearly with key points and main ideas.
 
-Important: Detect the language of the notes and summarize in that same language. Default to English if unclear."""},
+CRITICAL: Detect the language of the NOTES and summarize in that EXACT language.
+If notes are in English → summarize in English.
+If notes are in Nepali → summarize in Nepali.
+If notes are in Tagalog → summarize in Tagalog.
+If notes are in Cebuano → summarize in Cebuano.
+If notes are in Bisaya → summarize in Bisaya.
+If notes are in Hindi → summarize in Hindi.
+If mixed, use English."""},
                 {"role": "user", "content": notes}
             ],
             timeout=30, max_tokens=2000
@@ -224,7 +278,14 @@ Answer: X
 
 Separate each question with a blank line.
 
-Important: Generate the quiz in the same language as the notes. Default to English if unclear."""},
+CRITICAL: Generate the quiz in the EXACT SAME language as the notes.
+If notes are in English → quiz in English.
+If notes are in Nepali → quiz in Nepali.
+If notes are in Tagalog → quiz in Tagalog.
+If notes are in Cebuano → quiz in Cebuano.
+If notes are in Bisaya → quiz in Bisaya.
+If notes are in Hindi → quiz in Hindi.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -251,7 +312,14 @@ Front: question
 Back: answer
 ---
 
-Important: Create flashcards in the same language as the notes. Default to English if unclear."""},
+CRITICAL: Create flashcards in the EXACT SAME language as the notes.
+If notes are in English → flashcards in English.
+If notes are in Nepali → flashcards in Nepali.
+If notes are in Tagalog → flashcards in Tagalog.
+If notes are in Cebuano → flashcards in Cebuano.
+If notes are in Bisaya → flashcards in Bisaya.
+If notes are in Hindi → flashcards in Hindi.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -282,7 +350,11 @@ Likelihood: High/Medium/Low
 Reason: [why this will likely be on the exam]
 Answer: [model answer]
 
-Use the same language as the notes. Default to English if unclear."""},
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → predict in English.
+If notes are in Nepali → predict in Nepali.
+If notes are in Tagalog → predict in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -310,7 +382,12 @@ Create a 7-day study plan based on these notes. Each day should have:
 - Goals: [what to master by end of day]
 
 Make it realistic, actionable, and spaced for memory retention.
-Use the same language as the notes. Default to English if unclear."""},
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → plan in English.
+If notes are in Nepali → plan in Nepali.
+If notes are in Tagalog → plan in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -337,7 +414,11 @@ Definition: [clear definition]
 Example: [usage example if applicable]
 Importance: [why this matters]
 
-Use the same language as the notes. Default to English if unclear."""},
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → terms in English.
+If notes are in Nepali → terms in Nepali.
+If notes are in Tagalog → terms in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -367,7 +448,13 @@ Format as a hierarchical tree using indentation and symbols:
 │  ├─ 🍃 Leaf: [detail]
 │  └─ 🍃 Leaf: [detail]
 
-Make it comprehensive and well-organized. Use the same language as the notes. Default to English if unclear."""},
+Make it comprehensive and well-organized.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → mind map in English.
+If notes are in Nepali → mind map in Nepali.
+If notes are in Tagalog → mind map in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -394,8 +481,15 @@ Explain this topic like I'm 5 years old. Use:
 - A friendly, encouraging tone
 - Maybe a little story to illustrate
 
-Topic from notes: {req.topic}
-Use the same language as the notes. Default to English if unclear."""},
+Topic: {req.topic}
+
+CRITICAL: Detect the language of the TOPIC and respond in that EXACT language.
+If topic is in English → explain in English.
+If topic is in Nepali → explain in Nepali.
+If topic is in Tagalog → explain in Tagalog.
+If topic is in Cebuano → explain in Cebuano.
+If topic is in Bisaya → explain in Bisaya.
+NEVER use a different language than the topic."""},
                 {"role": "user", "content": notes}
             ],
             timeout=30, max_tokens=2000
@@ -423,7 +517,11 @@ Compare these two documents. Provide:
 4. 🎨 Unique to Doc 2 (only in second document)
 5. 💡 Synthesis (combined insights)
 
-Use the same language as the documents. Default to English if unclear."""},
+CRITICAL: Use the language of Document 1 as the primary language.
+If Doc 1 is in English → compare in English.
+If Doc 1 is in Nepali → compare in Nepali.
+If Doc 1 is in Tagalog → compare in Tagalog.
+NEVER use a different language than Document 1."""},
                 {"role": "user", "content": f"""DOCUMENT 1:
 {notes1[:8000]}
 
@@ -458,7 +556,11 @@ Provide:
 7. 🎯 Specific Feedback: [line-by-line suggestions]
 8. 📈 Improvement Plan: [how to get a better score next time]
 
-Use the same language as the essay/notes. Default to English if unclear."""},
+CRITICAL: Detect the language of the ESSAY and respond in that EXACT language.
+If essay is in English → grade in English.
+If essay is in Nepali → grade in Nepali.
+If essay is in Tagalog → grade in Tagalog.
+NEVER use a different language than the essay."""},
                 {"role": "user", "content": f"""NOTES/CONTEXT:
 {notes[:5000]}
 
@@ -491,7 +593,12 @@ DO NOT just give the answer. Instead:
 5. 💡 Similar practice problem for student to try
 
 Subject: {req.subject}
-Use the same language as the notes/question. Default to English if unclear."""},
+
+CRITICAL: Detect the language of the QUESTION and respond in that EXACT language.
+If question is in English → help in English.
+If question is in Nepali → help in Nepali.
+If question is in Tagalog → help in Tagalog.
+NEVER use a different language than the question."""},
                 {"role": "user", "content": f"""NOTES:
 {notes[:5000]}
 
@@ -523,7 +630,13 @@ Format each as:
 🎯 When to use: [application context]
 💡 Example: [worked example]
 
-Create a clean, organized formula sheet. Use the same language as the notes. Default to English if unclear."""},
+Create a clean, organized formula sheet.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → formula sheet in English.
+If notes are in Nepali → formula sheet in Nepali.
+If notes are in Tagalog → formula sheet in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -551,7 +664,13 @@ Format:
 ├─ 📌 Must Remember: [critical info]
 └─ ❓ Likely Exam Questions: [predicted questions]
 
-Make {req.count} chapters. Use the same language as the notes. Default to English if unclear."""},
+Make {req.count} chapters.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → chapters in English.
+If notes are in Nepali → chapters in Nepali.
+If notes are in Tagalog → chapters in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -578,7 +697,13 @@ Format each as:
 🔄 In Simple Words: [everyday language version]
 🎯 Why it matters: [context]
 
-Find exactly {req.count} words. Use the same language as the notes. Default to English if unclear."""},
+Find exactly {req.count} words.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → simplify in English.
+If notes are in Nepali → simplify in Nepali.
+If notes are in Tagalog → simplify in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -604,7 +729,13 @@ Sentence: [sentence with _____ for blank]
 Answer: [correct word/phrase]
 Hint: [subtle clue]
 
-Make blanks test important concepts, not trivial words. Use the same language as the notes. Default to English if unclear."""},
+Make blanks test important concepts, not trivial words.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → questions in English.
+If notes are in Nepali → questions in Nepali.
+If notes are in Tagalog → questions in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -630,7 +761,13 @@ Statement: [statement]
 Answer: True/False
 Explanation: [why it's true or false, with reference to notes]
 
-Mix true and false statements evenly. Use the same language as the notes. Default to English if unclear."""},
+Mix true and false statements evenly.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → questions in English.
+If notes are in Nepali → questions in Nepali.
+If notes are in Tagalog → questions in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -657,7 +794,13 @@ Expected Answer: [model answer in 2-4 sentences]
 Key Points to Include: [bullet points]
 Grading Rubric: [what makes a good answer]
 
-Questions should require understanding, not just memorization. Use the same language as the notes. Default to English if unclear."""},
+Questions should require understanding, not just memorization.
+
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → questions in English.
+If notes are in Nepali → questions in Nepali.
+If notes are in Tagalog → questions in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
@@ -697,7 +840,11 @@ Debate both sides of this topic based on the notes. Provide:
 ├─ Critical Analysis: [nuanced perspective]
 └─ Your Take: [reasoned conclusion]
 
-Use the same language as the notes. Default to English if unclear."""},
+CRITICAL: Use the EXACT SAME language as the notes.
+If notes are in English → debate in English.
+If notes are in Nepali → debate in Nepali.
+If notes are in Tagalog → debate in Tagalog.
+NEVER use a different language than the notes."""},
                 {"role": "user", "content": notes}
             ],
             timeout=45, max_tokens=3000
