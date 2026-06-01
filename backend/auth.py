@@ -33,7 +33,11 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+# AFTER (add this function):
 def get_user(db: Session, username: str):
+    return db.query(User).filter(User.username == username).first()
+
+def get_user_by_username(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
 def get_user_by_email(db: Session, email: str):
